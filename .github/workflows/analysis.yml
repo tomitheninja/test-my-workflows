@@ -27,6 +27,5 @@ jobs:
       package-manager: yarn
       skip-test: true 
       test-script: test:cov
-      build-artifacts-path: ./apps/frontend/dist
       test-coverage-path: coverage
       working-directory-scripts: ./apps/frontend
