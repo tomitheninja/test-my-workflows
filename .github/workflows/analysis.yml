@@ -1,4 +1,4 @@
-name: MonoRepo CI
+name: CI
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  nest:
+  backend:
     uses: kir-dev/automations/.github/workflows/node-ci.yml@node-ci
     with:
       node-version: 20
@@ -20,7 +20,7 @@ jobs:
       test-coverage-path: coverage
       working-directory-scripts: ./apps/backend
   
-  next:
+  frontend:
     uses: kir-dev/automations/.github/workflows/node-ci.yml@node-ci
     with:
       node-version: 20
