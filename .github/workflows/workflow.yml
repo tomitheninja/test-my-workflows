@@ -27,7 +27,7 @@ jobs:
       can-run: ${{ env.can-run }}
     steps:
       - name: Deny if async job is pending (rerun when job is done)
-        if: ${{ contains(github.event.pull_request.labels.*.name, '-pending') }}
+        if: ${{ contains('-pending', github.event.pull_request.labels.*.name) }}
         run: |
           echo "Async job is still executing. Cannot start a new run."
           curl \
