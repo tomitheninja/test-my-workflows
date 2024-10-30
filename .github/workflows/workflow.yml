@@ -99,7 +99,7 @@ jobs:
           echo "Goodbye and see you soon!"
   check-200_join:
     runs-on: [ubuntu-latest]
-    if: ${{ contains('job2-pass job2-fail', github.event.pull_request.labels.*.name) }}
+    if: ${{ contains('job2-pass job2-fail', github.event.label.name) }}
     steps:
       - name: Workflow is no longer up to date. Requesting a rerun.
         if: ${{ contains(github.event.pull_request.labels.*.name, env.RERUN_REQUEST_LABEL) }}
