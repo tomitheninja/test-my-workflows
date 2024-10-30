@@ -106,14 +106,14 @@ jobs:
         run: |
           echo "Workflow is no longer up to date. Requesting a rerun."
           curl \
+            -X DELETE \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels/${{ env.RERUN_REQUEST_LABEL }}"
+          curl \
             -X POST \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels" \
             -d '{"labels":["${{ env.RERUN_START_LABEL }}"]}'
-          curl \
-            -X DELETE \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels/${{ env.RERUN_REQUEST_LABEL }}"
           exit 1
       - name: Fail if result is fail
         if: ${{ github.event.label.name == 'job2-fail' }}
