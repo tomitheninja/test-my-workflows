@@ -82,7 +82,7 @@ jobs:
           JENKINS_USER: jira-user
           JENKINS_TOKEN: jira-token
         run: |
-          curl -X POST "${{ env.JENKINS_URL }}/job/your-jenkins-job-name/build" \
+          echo curl -X POST "${{ env.JENKINS_URL }}/job/your-jenkins-job-name/build" \
             --user "$${{ env.JENKINS_USER }}:${{ env.JENKINS_USER }}"
   job2_poll:
     runs-on: [ubuntu-latest]
