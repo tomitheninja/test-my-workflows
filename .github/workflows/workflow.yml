@@ -20,7 +20,7 @@ jobs:
         id: remove-force-pass-labels
         run: |
           set -xe
-          ALL_LABELS=${{ github.event.pull_request.labels.*.name }}
+          ALL_LABELS=(${{ join(github.event.pull_request.labels.*.name, ' ') }})
           echo "All labels: $ALL_LABELS"
 
           REMOVE_LABELS=$(echo $ALL_LABELS | grep -v -- "-force-pass")
@@ -40,7 +40,7 @@ jobs:
         id: remove-pass-and-fail-labels
         run: |
           set -xe
-          ALL_LABELS=${{ github.event.pull_request.labels.*.name }}
+          ALL_LABELS=(${{ join(github.event.pull_request.labels.*.name, ' ') }})
           echo "All labels: $ALL_LABELS"
 
           REMOVE_LABELS=$(echo $ALL_LABELS | grep -v -e "-pass" -e "-fail")
