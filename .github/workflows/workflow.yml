@@ -3,7 +3,7 @@ name: CI Pipeline
 on:
   pull_request:
     branches:
-      - master
+      - main
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ISSUE_ENDPOINT: ${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}
