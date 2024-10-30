@@ -1,0 +1,129 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - master
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ISSUE_ENDPOINT: ${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}
+
+jobs:
+  reset-labels:
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: remove force-pass labels
+        if: always()
+        id: remove-force-pass-labels
+        run: |
+          ALL_LABELS=${{ github.event.pull_request.labels.*.name }}
+          echo "All labels: $ALL_LABELS"
+
+          REMOVE_LABELS=$(echo $ALL_LABELS | grep -v "-force-pass")
+          echo "Remove labels: $REMOVE_LABELS"
+
+          for label in $REMOVE_LABELS; do
+            curl \
+                -X 'DELETE' \
+                -H 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
+                "${{ env.ISSUE_ENDPOINT }}/labels/$label"
+          done
+
+          echo "removed-labels=$REMOVE_LABELS" >> "$GITHUB_OUTPUT"
+
+      - name: remove pass and fail labels
+        if: always()
+        id: remove-pass-and-fail-labels
+        run: |
+          ALL_LABELS=${{ github.event.pull_request.labels.*.name }}
+          echo "All labels: $ALL_LABELS"
+
+          REMOVE_LABELS=$(echo $ALL_LABELS | grep -v -e "-pass" -e "-fail")
+          echo "Remove labels: $REMOVE_LABELS"
+
+          for label in $REMOVE_LABELS; do
+            curl \
+                -X 'DELETE' \
+                -H 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
+                "${{ env.ISSUE_ENDPOINT }}/labels/$label"
+          done
+
+          echo "removed-labels=$REMOVE_LABELS" >> "$GITHUB_OUTPUT"
+
+      - name: generate job summary
+        if: always()
+        run: |
+          echo "# Removed labels" >> "$GITHUB_STEP_SUMMARY"
+          echo ${{ join(steps.remove-force-pass-labels.outputs.removed-labels) }} >> "$GITHUB_STEP_SUMMARY"
+          echo ${{ join(steps.remove-pass-and-fail-labels.outputs.removed-labels) }} >> "$GITHUB_STEP_SUMMARY"
+        continue-on-error: true
+
+  # job 1
+  job1:
+    needs: [reset-labels]
+    runs-on: [ubuntu-latest]
+    if: ${{ !contains(github.event.pull_request.labels.*.name , 'job1-force-pass') }}
+    steps:
+      - name: Run job1
+        run: echo "Running job1..."
+
+  # job 2: async
+  job2_trigger:
+    runs-on: [ubuntu-latest]
+    needs: [job1]
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'job2-force-pass') }}
+    steps:
+      - name: Trigger remote job
+        env:
+          JENKINS_URL: https://your-jenkins-url.com
+          JENKINS_USER: jira-user
+          JENKINS_TOKEN: jira-token
+        run: |
+          curl -X POST "${{ env.JENKINS_URL }}/job/your-jenkins-job-name/build" \
+            --user "$${{ env.JENKINS_USER }}:${{ env.JENKINS_USER }}"
+  job2_poll:
+    runs-on: [ubuntu-latest]
+    needs: [job2_trigger]
+    if: ${{ needs.job2_trigger.result == 'success' }}
+    env:
+      PASS_LABEL: job2-pass
+      FAIL_LABEL: job2-fail
+    steps:
+      - name: Wait for the job2-pass or job2-fail label
+        run: |
+          STATUS=''
+          while true; do
+              sleep 10
+              ALL_LABELS=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" "${{ env.ISSUE_ENDPOINT  }}/labels" | jq -r '.[].name')
+              if [[ $ALL_LABELS == *"${{ env.PASS_LABEL }}"* ]]; then
+                  STATUS='pass'
+                  break
+              fi
+              if [[ $ALL_LABELS == *"${{ env.FAIL_LABEL }}"* ]]; then
+                STATUS='fail'
+                break
+              fi
+          done
+      - name: Remove ${{ env.PASS_LABEL }} label
+        continue-on-error: true
+        run: |
+          curl \
+            -X DELETE
+            -H "Authorization: token $GITHUB_TOKEN" \
+            "$ISSUE_ENDPOINT/labels/{{ env.PASS_LABEL }}"
+      - name: Remove ${{ env.FAIL_LABEL }} label
+        continue-on-error: true
+        run: |
+          curl \
+            -X DELETE
+            -H "Authorization: token $GITHUB_TOKEN" \
+            "$ISSUE_ENDPOINT/labels/{{ env.FAIL_LABEL }}"
+
+  # job 3
+  job3:
+    runs-on: [ubuntu-latest]
+    needs: [job2_poll]
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'job3-force-pass') }}
+    steps:
+      - name: Run job3
+        run: echo "Running job3..."
