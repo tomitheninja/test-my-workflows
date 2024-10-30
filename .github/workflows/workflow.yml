@@ -1,0 +1,137 @@
+name: CI Pipeline
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+env:
+  RERUN_REQUEST_LABEL: rerun-needed
+  RERUN_START_LABEL: rerun-command
+  GITHUB_REPO_API: ${{ github.api_url }}/repos/${{ github.repository }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ASYNC_JOB_LABELS: job2-pass job2-fail job2-pending
+concurrency:
+  group: ${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+permissions:
+  issues: write
+  pull-requests: write
+  actions: write
+jobs:
+  trigger-guard-001:
+    # This job:
+    # - Prevents new runs until an other run is completed
+    # - Allows rerun via the RERUN_START_LABEL label
+    runs-on: ubuntu-latest
+    env:
+      can-run: false
+    outputs:
+      can-run: ${{ env.can-run }}
+    steps:
+      - name: Print the labels
+        run: |
+          echo "Labels:"
+          echo "${{ toJson(github.event.pull_request.labels.*.name) }}"
+      - name: Deny if async job is pending (rerun when job is done)
+        if: ${{ contains(join(github.event.pull_request.labels.*.name, ' '), '-pending') }}
+        run: |
+          echo "Async job is still executing. Cannot start a new run."
+          curl \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels" \
+            -d '{"labels":["${{ env.RERUN_REQUEST_LABEL }}"]}'
+          exit 1
+      - name: On commit like event
+        if: ${{ github.event.action != 'labeled' }}
+        run: echo 'can-run=true' >> $GITHUB_ENV
+      - name: On rerun command
+        if: ${{ github.event.action == 'labeled' && github.event.label.name == env.RERUN_START_LABEL }}
+        run: |
+          echo 'can-run=true' >> $GITHUB_ENV
+      - name: Cancel if cannot run
+        run: |
+          if [[ $can-run == false ]]; then
+            curl \
+              -X POST \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ env.GITHUB_REPO_API }}/actions/runs/${{ github.run_id }}/force-cancel"
+            sleep 5
+            exit 1
+          fi
+  reset-labels-002:
+    runs-on: ubuntu-latest
+    needs: [trigger-guard-001]
+    if: ${{ needs.trigger-guard-001.outputs.can-run == 'true' }}
+    steps:
+      - name: Remove labels from previous runs
+        run: |
+          for label in ${{ env.ASYNC_JOB_LABELS }} ${{ env.RERUN_START_LABEL }}
+          do
+            curl \
+              -X DELETE \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels/$label"
+          done
+  check-100:
+    runs-on: [ubuntu-latest]
+    needs: [reset-labels-002]
+    steps:
+      - name: Execute Check 100
+        run: |
+          echo "Check 100 is executing..."
+          echo "Check 100 passed." || exit 1
+      - name: Execute Check 101
+        run: |
+          echo "Check 101 is executing..."
+          echo "Check 101 passed." || exit 1
+  check-200_trigger:
+    runs-on: [ubuntu-latest]
+    needs: [check-100]
+    steps:
+      - name: Trigger Check 200
+        run: |
+          echo "Check 200 is starting..."
+          curl \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels" \
+            -d '{"labels":["job2-pending"]}'
+          echo "Check 200 started." || exit 1
+          echo "Goodbye and see you soon!"
+  check-200_join:
+    runs-on: [ubuntu-latest]
+    if: ${{ contains('job2-pass job2-fail', github.event.label.name) }}
+    steps:
+      - name: Workflow is no longer up to date. Requesting a rerun.
+        if: ${{ contains(github.event.pull_request.labels.*.name, env.RERUN_REQUEST_LABEL) }}
+        run: |
+          echo "Workflow is no longer up to date. Requesting a rerun."
+          curl \
+            -X DELETE \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels/${{ env.RERUN_REQUEST_LABEL }}"
+          curl \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels" \
+            -d '{"labels":["${{ env.RERUN_START_LABEL }}"]}'
+          exit 1
+      - name: Fail if result is fail
+        if: ${{ github.event.label.name == 'job2-fail' }}
+        run: echo "Background job failed." ; exit 1
+      - name: Remove labels
+        run: |
+          for label in job2-pending job2-pass job2-fail
+          do
+            curl \
+              -X DELETE \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ env.GITHUB_REPO_API }}/issues/${{ github.event.pull_request.number }}/labels/$label"
+          done
+      - name: Execute Check 200
+        run: |
+          echo "Check 200 is executing..."
+          echo "Check 200 passed." || exit 1
+      - name: Execute Check 201
+        run: |-
+          echo "Check 201 is executing..."
+          echo "Check 201 passed." || exit 1
