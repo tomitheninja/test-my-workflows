@@ -32,7 +32,7 @@ jobs:
               echo "$label" >> "$GITHUB_STEP_SUMMARY"
               curl \
                 -X 'DELETE' \
-                -H 'Authorization: token ${{ env.GITHUB_TOKEN }}' \
+                -H 'Authorization: Bearer ${{ env.GITHUB_TOKEN }}' \
                 "${{ env.ISSUE_ENDPOINT }}/labels/$label"
             fi
           done
@@ -76,7 +76,7 @@ jobs:
           set -xe
           while true; do
               sleep 10
-              ALL_LABELS=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" "${{ env.ISSUE_ENDPOINT  }}/labels" | jq -r '.[].name')
+              ALL_LABELS=$(curl -s -H "Authorization: Bearer ${{ env.GITHUB_TOKEN }}" "${{ env.ISSUE_ENDPOINT  }}/labels" | jq -r '.[].name')
               if [[ $ALL_LABELS == *"${{ env.PASS_LABEL }}"* ]]; then
                   exit 0
               fi
@@ -91,14 +91,14 @@ jobs:
         run: |
           curl -q \
             -X DELETE
-            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
             "$ISSUE_ENDPOINT/labels/{{ env.PASS_LABEL }}"
       - name: Remove ${{ env.FAIL_LABEL }} label
         if: always()
         run: |
           curl -q \
             -X DELETE
-            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
             "$ISSUE_ENDPOINT/labels/{{ env.FAIL_LABEL }}"
 
   # job 3
