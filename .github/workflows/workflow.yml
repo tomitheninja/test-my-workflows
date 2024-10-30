@@ -90,14 +90,14 @@ jobs:
         if: always()
         run: |
           curl -q \
-            -X DELETE
+            -X DELETE \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             "$ISSUE_ENDPOINT/labels/{{ env.PASS_LABEL }}"
       - name: Remove ${{ env.FAIL_LABEL }} label
         if: always()
         run: |
           curl -q \
-            -X DELETE
+            -X DELETE \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             "$ISSUE_ENDPOINT/labels/{{ env.FAIL_LABEL }}"
 
