@@ -19,10 +19,10 @@ jobs:
         if: always()
         id: remove-force-pass-labels
         run: |
-          ALL_LABELS=${{ toJson(github.event.pull_request.labels.*.name) }}
+          ALL_LABELS=${{ github.event.pull_request.labels.*.name }}
           echo "All labels: $ALL_LABELS"
 
-          REMOVE_LABELS=$(echo $ALL_LABELS | grep -v "-force-pass")
+          REMOVE_LABELS=$(echo $ALL_LABELS | grep -v -- "-force-pass")
           echo "Remove labels: $REMOVE_LABELS"
 
           for label in $REMOVE_LABELS; do
