@@ -39,7 +39,7 @@ jobs:
   job1:
     runs-on: ubuntu-latest
     needs: initialize
-    if: "!contains(github.event.pull_request.labels.*.name, 'job1-skip')"
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'job1-skip') }}
     steps:
       - name: Check for job1 force-pass
         if: contains(github.event.pull_request.labels.*.name, 'job1-force-pass')
@@ -51,16 +51,17 @@ jobs:
   trigger_job2:
     runs-on: ubuntu-latest
     needs: job1
-    if: "!failure() && !contains(github.event.pull_request.labels.*.name, 'job2-skip')"
+    if: ${{ !failure() && !contains(github.event.pull_request.labels.*.name, 'job2-skip') }}
     steps:
       - name: Trigger async job (Jenkins)
         env:
-          JENKINS_URL: ${{ secrets.JENKINS_URL }}
-          JENKINS_USER: ${{ secrets.JENKINS_USER }}
-          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_URL: jenkins-server-url
+          JENKINS_USER: jenkins-user
+          JENKINS_TOKEN: jenkins-token
         run: |
-          curl -s -X POST "${JENKINS_URL}/job/your-jenkins-job-name/build" \
+          echo curl -s -X POST "${JENKINS_URL}/job/your-jenkins-job-name/build" \
             --user "$JENKINS_USER:$JENKINS_TOKEN"
+
           # After triggering, set a pending state label
           curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
             "${ISSUE_ENDPOINT}/labels" -d '{"labels": ["job2-pending"]}'
@@ -77,7 +78,7 @@ jobs:
   job3:
     runs-on: ubuntu-latest
     needs: wait_for_job2_completion
-    if: "!failure() && !contains(github.event.pull_request.labels.*.name, 'job3-skip')"
+    if: ${{ !failure() && !contains(github.event.pull_request.labels.*.name, 'job3-skip') }}
     steps:
       - name: Check for job3 force-pass
         if: contains(github.event.pull_request.labels.*.name, 'job3-force-pass')
