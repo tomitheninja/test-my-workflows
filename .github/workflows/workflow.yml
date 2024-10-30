@@ -26,7 +26,7 @@ jobs:
           echo "All labels: $INITIAL_LABELS"
 
           echo "# Removed labels" >> "$GITHUB_STEP_SUMMARY"
-          for label in "${INITIAL_LABELS[@]}"
+          for label in ${INITIAL_LABELS[@]}
           do
             if [[ "$label" == *-force-pass || "$label" == *-pass || "$label" == *-fail ]]; then
               echo "$label" >> "$GITHUB_STEP_SUMMARY"
