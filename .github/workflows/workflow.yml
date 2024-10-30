@@ -4,7 +4,7 @@ on:
     types: [opened, synchronize, reopened, labeled]
 env:
   RERUN_REQUEST_LABEL: rerun-needed
-  RERUN_START_LABEL: rerun-command # hard coded in label-initialization run condition
+  RERUN_START_LABEL: rerun-command
   GITHUB_REPO_API: ${{ github.api_url }}/repos/${{ github.repository }}
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ASYNC_JOB_LABELS: job2-pass job2-fail job2-pending
