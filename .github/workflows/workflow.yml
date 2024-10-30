@@ -26,8 +26,12 @@ jobs:
     outputs:
       can-run: ${{ env.can-run }}
     steps:
+      - name: Print the labels
+        run: |
+          echo "Labels:"
+          echo ${{ toJson(github.event.pull_request.labels.*.name) }}
       - name: Deny if async job is pending (rerun when job is done)
-        if: ${{ contains('-pending', github.event.pull_request.labels.*.name) }}
+        if: ${{ contains(join(github.event.pull_request.labels.*.name, ' '), '-pending',) }}
         run: |
           echo "Async job is still executing. Cannot start a new run."
           curl \
