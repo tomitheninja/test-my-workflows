@@ -6,6 +6,8 @@ on:
       - main
     types:
       - opened
+      - reopened
+      - synchronize
       - labeled # Watch for label changes to dynamically resume async workflows
 
 permissions:
