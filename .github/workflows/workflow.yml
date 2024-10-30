@@ -8,6 +8,7 @@ env:
   RERUN_REQUEST_LABEL: rerun-needed
   RERUN_START_LABEL: rerun-command # hard coded in label-initialization run condition
   GITHUB_REPO_API: ${{ github.api_url }}/repos/${{ github.repository }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 concurrency:
   group: ${{ github.repository }}-${{ github.event.pull_request.number }}
