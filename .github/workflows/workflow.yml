@@ -29,7 +29,7 @@ jobs:
       - name: Print the labels
         run: |
           echo "Labels:"
-          echo ${{ toJson(github.event.pull_request.labels.*.name) }}
+          echo "${{ toJson(github.event.pull_request.labels.*.name) }}"
       - name: Deny if async job is pending (rerun when job is done)
         if: ${{ contains(join(github.event.pull_request.labels.*.name, ' '), '-pending') }}
         run: |
