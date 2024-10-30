@@ -80,7 +80,6 @@ jobs:
               ALL_LABELS=$(curl -s -H "Authorization: Bearer ${{ env.GITHUB_TOKEN }}" "${{ env.ISSUE_ENDPOINT  }}/labels" | jq -r '.[].name')
               if [[ $ALL_LABELS == *"${{ env.PASS_LABEL }}"* ]]; then
                   exit 0
-              fi
               elif [[ $ALL_LABELS == *"${{ env.FAIL_LABEL }}"* ]]; then
                 exit 1
               else
