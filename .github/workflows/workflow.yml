@@ -1,90 +1,130 @@
-name: CI Pipeline with Async Job Control
+name: CI Pipeline
 
 on:
   pull_request:
-    branches:
-      - main
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - labeled # Watch for label changes to dynamically resume async workflows
+    types: [opened, synchronize, reopened, labeled]
+
+env:
+  RERUN_REQUEST_LABEL: rerun-needed
+  RERUN_START_LABEL: rerun-command # hard coded in label-initialization run condition
+  GITHUB_REPO_API: ${{ github.api_url }}/repos/${{ github.repository }}
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   issues: write
   pull-requests: write
-
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  ISSUE_ENDPOINT: ${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}
-  DEVOPS_LABELS: "job1-skip job1-force-pass job2-skip job2-force-pass job2-pending job2-pass job3-skip job3-force-pass"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
+  actions: write
 jobs:
-  initialize:
+  trigger-guard:
+    # This job:
+    # - Prevents new runs until an other run is completed
+    # - Allows rerun via the RERUN_START_LABEL label
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' }}
+    env:
+      can-run: false
     steps:
-      - name: Set initial control labels for PR
+      - name: Deny if async job is pending (rerun when job is done)
+        if: ${{ contains(github.event.pull_request.labels.*.name, '-pending') }}
         run: |
-          for label in $DEVOPS_LABELS; do
-            curl -s -X POST \
+          echo "Async job is still executing. Cannot start a new run."
+          gh pr edit ${{ github.event.pull_request.number }} --add-label ${{ env.RERUN_REQUEST_LABEL }}
+          exit 1
+
+      - name: On commit like event
+        if: ${{ github.event.action != 'labeled' }}
+        run: echo 'can-run=true' >> $GITHUB_ENV
+      - name: On rerun command
+        if: ${{ github.event.action == 'labeled' && github.event.label.name == env.RERUN_START_LABEL }}
+        run: |
+          echo 'can-run=true' >> $GITHUB_ENV
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label ${{ env.RERUN_START_LABEL }}
+
+      - name: Cancel if cannot run
+        run: |
+          if [[ $can-run == false ]]; then
+            curl \
+              -X POST \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              "${ISSUE_ENDPOINT}/labels" \
-              -d "{\"labels\": [\"$label\"]}"
-          done
+              "${{ env.GITHUB_REPO_API }}/actions/runs/${{ github.run_id }}/force-cancel"
+            sleep 5
+            exit 1
+          fi
 
-  job1:
+  reset-labels:
     runs-on: ubuntu-latest
-    needs: initialize
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'job1-skip') }}
+    needs: [trigger-guard]
     steps:
-      - name: Check for job1 force-pass
-        if: contains(github.event.pull_request.labels.*.name, 'job1-force-pass')
-        run: echo "job1 force-passed by DevOps" && exit 0
-
-      - name: Run job1 tasks
-        run: echo "Running job1..."
-
-  trigger_job2:
-    runs-on: ubuntu-latest
-    needs: job1
-    if: ${{ !failure() && !contains(github.event.pull_request.labels.*.name, 'job2-skip') }}
-    steps:
-      - name: Trigger async job (Jenkins)
-        env:
-          JENKINS_URL: jenkins-server-url
-          JENKINS_USER: jenkins-user
-          JENKINS_TOKEN: jenkins-token
+      - name: Remove labels from previous runs
         run: |
-          echo curl -s -X POST "${JENKINS_URL}/job/your-jenkins-job-name/build" \
-            --user "$JENKINS_USER:$JENKINS_TOKEN"
+          gh pr edit ${{ github.event.pull_request.number }} \
+            --remove-label job2-pass \
+            --remove-label job2-fail \
+            --remove-label job2-pending
 
-          # After triggering, set a pending state label
-          curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "${ISSUE_ENDPOINT}/labels" -d '{"labels": ["job2-pending"]}'
-
-  wait_for_job2_completion:
-    runs-on: ubuntu-latest
-    needs: trigger_job2
-    if: contains(github.event.pull_request.labels.*.name, 'job2-pending')
+  check-1:
+    runs-on: [ubuntu-latest]
+    needs: [trigger-guard, reset-labels]
     steps:
-      - name: Await async job completion
+      - name: Execute Check 1
         run: |
-          echo "Waiting for job2-pass label to appear. Workflow will resume automatically upon job2 completion."
+          echo "Check 1 is executing..."
+          echo "Check 1 passed." || exit 1
 
-  job3:
-    runs-on: ubuntu-latest
-    needs: wait_for_job2_completion
-    if: ${{ !failure() && !contains(github.event.pull_request.labels.*.name, 'job3-skip') }}
+  check-2:
+    runs-on: [ubuntu-latest]
+    needs: [check-1]
     steps:
-      - name: Check for job3 force-pass
-        if: contains(github.event.pull_request.labels.*.name, 'job3-force-pass')
-        run: echo "job3 force-passed by DevOps" && exit 0
+      - name: Execute Check 2
+        run: |
+          echo "Check 2 is executing..."
+          echo "Check 2 passed." || exit 1
 
-      - name: Run job3 tasks
-        run: echo "Running job3..."
+  check-10_trigger:
+    runs-on: [ubuntu-latest]
+    needs: [check-2]
+    steps:
+      - name: Trigger Check 10
+        run: |
+          echo "Check 10 is starting..."
+          gh pr edit ${{ github.event.pull_request.number }} --add-label job2-pending
+          echo "Check 2 started." || exit 1
+          echo "Goodbye and see you soon!"
+  check-10_join:
+    runs-on: [ubuntu-latest]
+    if: ${{ contains('job2-pass job2-fail', github.event.label.name) }}
+    steps:
+      - name: Workflow is no longer up to date. Requesting a rerun.
+        if: ${{ contains(github.event.pull_request.labels.*.name, env.RERUN_REQUEST_LABEL) }}
+        run: |
+          echo "Check 10 is no longer up to date. Requesting a rerun."
+          gh pr edit ${{ github.event.pull_request.number }} \
+            --remove-label ${{ env.RERUN_REQUEST_LABEL }} \
+            --add-label ${{ env.RERUN_START_LABEL }}
+          exit 1
+      - name: Fail if result is fail
+        if: ${{ github.event.label.name == 'job2-fail' }}
+        run: echo "Check 10 failed." ; exit 1
+      - name: Remove labels
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} \
+            --remove-label job2-pending --remove-label job2-pass --remove-label job2-fail
+
+  check-20:
+    runs-on: [ubuntu-latest]
+    needs: [check-10_join]
+    steps:
+      - name: Execute Check 20
+        run: |
+          echo "Check 20 is executing..."
+          echo "Check 20 passed." || exit 1
+  check-21:
+    runs-on: [ubuntu-latest]
+    needs: [check-20]
+    steps:
+      - name: Execute Check 21
+        run: |
+          echo "Check 21 is executing..."
+          echo "Check 21 passed." || exit 1
