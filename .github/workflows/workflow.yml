@@ -19,6 +19,7 @@ jobs:
         if: always()
         id: remove-force-pass-labels
         run: |
+          set -xe
           ALL_LABELS=${{ github.event.pull_request.labels.*.name }}
           echo "All labels: $ALL_LABELS"
 
@@ -38,6 +39,7 @@ jobs:
         if: always()
         id: remove-pass-and-fail-labels
         run: |
+          set -xe
           ALL_LABELS=${{ github.event.pull_request.labels.*.name }}
           echo "All labels: $ALL_LABELS"
 
@@ -56,6 +58,7 @@ jobs:
       - name: generate job summary
         if: always()
         run: |
+          set -xe
           echo "# Removed labels" >> "$GITHUB_STEP_SUMMARY"
           echo ${{ join(steps.remove-force-pass-labels.outputs.removed-labels) }} >> "$GITHUB_STEP_SUMMARY"
           echo ${{ join(steps.remove-pass-and-fail-labels.outputs.removed-labels) }} >> "$GITHUB_STEP_SUMMARY"
@@ -68,7 +71,9 @@ jobs:
     if: ${{ !contains(github.event.pull_request.labels.*.name , 'job1-force-pass') }}
     steps:
       - name: Run job1
-        run: echo "Running job1..."
+        run: |
+          set -xe
+          echo "Running job1..."
 
   # job 2: async
   job2_trigger:
@@ -82,6 +87,7 @@ jobs:
           JENKINS_USER: jira-user
           JENKINS_TOKEN: jira-token
         run: |
+          set -xe
           echo curl -X POST "${{ env.JENKINS_URL }}/job/your-jenkins-job-name/build" \
             --user "$${{ env.JENKINS_USER }}:${{ env.JENKINS_USER }}"
   job2_poll:
@@ -94,30 +100,30 @@ jobs:
     steps:
       - name: Wait for the job2-pass or job2-fail label
         run: |
-          STATUS=''
+          set -xe
           while true; do
               sleep 10
               ALL_LABELS=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" "${{ env.ISSUE_ENDPOINT  }}/labels" | jq -r '.[].name')
               if [[ $ALL_LABELS == *"${{ env.PASS_LABEL }}"* ]]; then
-                  STATUS='pass'
-                  break
+                  exit 0
               fi
-              if [[ $ALL_LABELS == *"${{ env.FAIL_LABEL }}"* ]]; then
-                STATUS='fail'
-                break
+              elif [[ $ALL_LABELS == *"${{ env.FAIL_LABEL }}"* ]]; then
+                exit 1
+              else
+                echo "Waiting for the job2-pass or job2-fail label..."
               fi
           done
       - name: Remove ${{ env.PASS_LABEL }} label
-        continue-on-error: true
+        if: always()
         run: |
-          curl \
+          curl -q \
             -X DELETE
             -H "Authorization: token $GITHUB_TOKEN" \
             "$ISSUE_ENDPOINT/labels/{{ env.PASS_LABEL }}"
       - name: Remove ${{ env.FAIL_LABEL }} label
-        continue-on-error: true
+        if: always()
         run: |
-          curl \
+          curl -q \
             -X DELETE
             -H "Authorization: token $GITHUB_TOKEN" \
             "$ISSUE_ENDPOINT/labels/{{ env.FAIL_LABEL }}"
