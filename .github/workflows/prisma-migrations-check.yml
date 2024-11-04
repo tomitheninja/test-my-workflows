@@ -2,6 +2,7 @@ name: Parse PR body
 
 on:
   issue_comment:
+    types: [created, edited]
 
 jobs:
   check_prisma_changes:
