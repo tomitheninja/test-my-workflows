@@ -1,7 +1,8 @@
 name: Parse PR body
 
 on:
-  pull_request:
+  issue_comment:
+    types: [created, edited]
 
 jobs:
   check_prisma_changes:
@@ -10,22 +11,23 @@ jobs:
     steps:
       - name: Parse start keyword regex
         id: parse_description
-        if: ${{ github.event.issue.pull_request }}
         env:
             BODY: ${{ github.event.comment.body }}
+            DESCRIPTION: ${{ github.event.issue.body }}
             IGNORE_TESTING_OPTIMIZATION_PATTERN: '- [ ] Ignore testing optimization'
             IGNORE_TESTING_OPTIMIZATION_FLAG: '--ignore-testing-optimization'
         run: |
           #!/bin/bash
           formatted_comment=${BODY//\"/\'}
-          if [[ "$formatted_comment" =~ ${{ inputs.start_keyword }} ]]; then
+          if [[ "$formatted_comment" =~ gate-test ]]; then
             echo "RUN_GK=true" >> $GITHUB_ENV
           else
             echo "RUN_GK=false" >> $GITHUB_ENV
           fi
 
+          formated_description=${DESCRIPTION//\"/\'}
           EXTRA_PARAMS=""
-          if [[ "$formatted_comment" == *"${{ env.IGNORE_TESTING_OPTIMIZATION_PATTERN }}"*" ]]; then
+          if [[ "$formated_description" == *"${{ env.IGNORE_TESTING_OPTIMIZATION_PATTERN }}"*" ]]; then
             EXTRA_PARAMS="${EXTRA_PARAMS} ${{ env.IGNORE_TESTING_OPTIMIZATION_FLAG }}"
           fi
           echo "EXTRA_PARAMS=$EXTRA_PARAMS" >> "$GITHUB_OUTPUT"
