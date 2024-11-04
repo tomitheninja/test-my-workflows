@@ -35,7 +35,7 @@ jobs:
           echo "EXTRA_PARAMS=$EXTRA_PARAMS" >> "$GITHUB_OUTPUT"
 
           echo '# Gatekeeping comment parsing' >> "$GITHUB_STEP_SUMMARY"
-          echo -e '```\nRUN_GK=$RUN_GK $EXTRA_PARAMS\n```'  >> "$GITHUB_STEP_SUMMARY"
+          echo -e "```\nRUN_GK=$RUN_GK $EXTRA_PARAMS\n```"  >> "$GITHUB_STEP_SUMMARY"
       - name: Use the flags
         run: |
           echo  PARAMS="--org ${{ github.event.repository.owner.login }} --repo ${{ github.event.repository.name }} --secrets hwx_secrets.conf ${{ steps.parse_description.outputs.EXTRA_PARAMS }}" sh jenkins.sh
