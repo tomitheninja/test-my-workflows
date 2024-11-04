@@ -19,22 +19,22 @@ jobs:
         run: |
           #!/bin/bash
           formatted_comment=${BODY//\"/\'}
-          formated_description=${DESCRIPTION//\"/\'}
-
+          formatted_description=${DESCRIPTION//\"/\'}
+  
           RUN_GK='false'
           if [[ "$formatted_comment" =~ gate-test ]]; then
             RUN_GK=true
           fi
           echo "RUN_GK=$RUN_GK" >> "$GITHUB_ENV"
-
-
+  
+  
           EXTRA_PARAMS=""
-          if [[ "$formated_description" == *"${{ env.IGNORE_TESTING_OPTIMIZATION_PATTERN }}"* ]]; then
+          if [[ "$formatted_description" == *"${{ env.IGNORE_TESTING_OPTIMIZATION_PATTERN }}"* ]]; then
             EXTRA_PARAMS="${EXTRA_PARAMS} ${{ env.IGNORE_TESTING_OPTIMIZATION_FLAG }}"
           fi
           echo "EXTRA_PARAMS=$EXTRA_PARAMS" >> "$GITHUB_OUTPUT"
-
-
+  
+  
           echo '# Gatekeeping comment parsing' >> "$GITHUB_STEP_SUMMARY"
           echo '```bash'  >> "$GITHUB_STEP_SUMMARY"
           echo "RUN_GK=$RUN_GK $EXTRA_PARAMS" >> "$GITHUB_STEP_SUMMARY"
