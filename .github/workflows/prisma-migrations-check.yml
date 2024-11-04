@@ -1,43 +1,36 @@
-name: Check Prisma Migrations
+name: Parse PR body
 
 on:
   pull_request:
-    paths:
-      - 'apps/backend/prisma/schema.prisma'
-      - 'apps/backend/prisma/migrations/**'
 
 jobs:
   check_prisma_changes:
+    if: ${{ github.event.issue.pull_request }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch all history for all branches
-
-      - name: Fetch base branch
-        run: git fetch origin ${{ github.base_ref }}
-
-      - name: Check if `schema.prisma` was modified in the PR
-        id: check_schema
+      - name: Parse start keyword regex
+        id: parse_description
+        if: ${{ github.event.issue.pull_request }}
+        env:
+            BODY: ${{ github.event.comment.body }}
+            IGNORE_TESTING_OPTIMIZATION_PATTERN: '- [ ] Ignore testing optimization'
+            IGNORE_TESTING_OPTIMIZATION_FLAG: '--ignore-testing-optimization'
         run: |
-          if git diff --name-only origin/${{ github.base_ref }}... | grep -q 'apps/backend/prisma/schema.prisma'; then
-            echo "schema_changed=true" >> $GITHUB_ENV
+          #!/bin/bash
+          formatted_comment=${BODY//\"/\'}
+          if [[ "$formatted_comment" =~ ${{ inputs.start_keyword }} ]]; then
+            echo "RUN_GK=true" >> $GITHUB_ENV
           else
-            echo "schema_changed=false" >> $GITHUB_ENV
+            echo "RUN_GK=false" >> $GITHUB_ENV
           fi
 
-      - name: Check if a new migration was added in the PR
-        id: check_migrations
-        run: |
-          if git diff --name-only --diff-filter=A origin/${{ github.base_ref }}... | grep -q 'apps/backend/prisma/migrations/'; then
-            echo "migration_added=true" >> $GITHUB_ENV
-          else
-            echo "migration_added=false" >> $GITHUB_ENV
+          EXTRA_PARAMS=""
+          if [[ "$formatted_comment" == *"${{ env.IGNORE_TESTING_OPTIMIZATION_PATTERN }}"*" ]]; then
+            EXTRA_PARAMS="${EXTRA_PARAMS} ${{ env.IGNORE_TESTING_OPTIMIZATION_FLAG }}"
           fi
-
-      - name: Fail if `schema.prisma` was modified and no migration was added
-        if: env.schema_changed == 'true' && env.migration_added == 'false'
+          echo "EXTRA_PARAMS=$EXTRA_PARAMS" >> "$GITHUB_OUTPUT"
+          echo "RUN_GK=$RUN_GK $EXTRA_PARAMS" >> "$GITHUB_STEP_SUMMARY"
+      - name: Use the flags
         run: |
-          echo "The schema.prisma file was modified, but no new migration was added."
-          exit 1
+          echo  PARAMS="--org ${{ github.event.repository.owner.login }} --repo ${{ github.event.repository.name }} --secrets hwx_secrets.conf ${{ steps.parse_description.outputs.EXTRA_PARAMS }}" sh jenkins.sh
+
