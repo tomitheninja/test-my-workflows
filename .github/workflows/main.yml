@@ -13,6 +13,7 @@ jobs:
 
   check_prisma_changes:
     needs: [gk-config]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verify PR label users
