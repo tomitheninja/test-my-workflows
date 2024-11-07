@@ -21,8 +21,8 @@ jobs:
         # if: contains(fromJson(steps.verify.outputs.CONFIG_JSON).branches, github.event.pull_request.base.ref) && contains(fromJson(steps.verify.outputs.CONFIG_JSON).projects, github.repository)
         run: |
           set -x
-          echo ${{ fromJson(needs.gk-config.outputs.ticket_validator).branches }}
-          echo ${{ fromJson(needs.gk-config.outputs.ticket_validator).projects }}
+          echo ${{ toJson(fromJson(needs.gk-config.outputs.ticket_validator).branches) }}
+          echo ${{ toJson(fromJson(needs.gk-config.outputs.ticket_validator).projects) }}
           echo ${{ github.event.pull_request.base.ref }}
           echo ${{ github.repository }}
           exit 123
