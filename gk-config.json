@@ -1,0 +1,7 @@
+{
+    "ticket_validator": {"projects": ["tomitheninja/test-my-workflows","AAA/BBB"],"branches": ["main","AAA-7.1.9.x"]},
+    "test_starter": {
+        "projects": ["tomitheninja/test-my-workflows","CCC/DDD"],
+        "branches": ["main","BBB-7.1.9.x"]
+    }
+}

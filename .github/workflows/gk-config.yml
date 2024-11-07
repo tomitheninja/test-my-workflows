@@ -1,0 +1,19 @@
+on:
+  workflow_call:
+    inputs:
+      foo:
+        description: "foo"
+        required: true
+        type: string
+    outputs:
+      test-starter:
+        value: ${{ fromJson(  '{"projects":["tomitheninja/test-my-workflows","AAA/BBB"],"branches":["main","AAA-1.2.3.x"]}'  ) }}
+      ticket_validator:
+        value: ${{ fromJson(  '{"projects":["tomitheninja/test-my-workflows","AAA/BBB"],"branches":["main","AAA-1.2.3.x"]}'  ) }}
+jobs:
+  null-job:
+    runs-on: [reubuntu-20]
+    if: false
+    steps:
+    - name: This step should be skipped
+      run: exit 1
