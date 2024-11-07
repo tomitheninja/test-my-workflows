@@ -1,9 +1,8 @@
 on:
   workflow_call:
     inputs:
-      foo:
-        description: "foo"
-        required: true
+      gk-action:
+        required: false
         type: string
     outputs:
       test-starter:
