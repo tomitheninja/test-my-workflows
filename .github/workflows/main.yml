@@ -19,4 +19,10 @@ jobs:
       - name: Verify PR label users
         if: contains(fromJson(needs.gk-config.outputs.ticket_validator).branches, github.event.pull_request.base.ref) && contains(fromJson(needs.gk-config.outputs.ticket_validator).projects, github.repository)
         # if: contains(fromJson(steps.verify.outputs.CONFIG_JSON).branches, github.event.pull_request.base.ref) && contains(fromJson(steps.verify.outputs.CONFIG_JSON).projects, github.repository)
-        run: exit 123
+        run: |
+          set -x
+          echo ${{ fromJson(needs.gk-config.outputs.ticket_validator).branches }}
+          echo ${{ fromJson(needs.gk-config.outputs.ticket_validator).projects }}
+          echo ${{ github.event.pull_request.base.ref }}
+          echo ${{ github.repository }}
+          exit 123
