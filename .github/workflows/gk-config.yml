@@ -6,9 +6,9 @@ on:
         type: string
     outputs:
       test-starter:
-        value: ${{ fromJson(  '{"projects":["tomitheninja/test-my-workflows","AAA/BBB"],"branches":["main","AAA-1.2.3.x"]}'  ) }}
+        value: '{"projects":["tomitheninja/test-my-workflows","AAA/BBB"],"branches":["main","AAA-1.2.3.x"]}'
       ticket_validator:
-        value: ${{ fromJson(  '{"projects":["tomitheninja/test-my-workflows","AAA/BBB"],"branches":["main","AAA-1.2.3.x"]}'  ) }}
+        value: '{"projects":["tomitheninja/test-my-workflows","AAA/BBB"],"branches":["main","AAA-1.2.3.x"]}'
 jobs:
   null-job:
     runs-on: [reubuntu-20]
