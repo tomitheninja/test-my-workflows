@@ -16,6 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify PR label users
-        if: contains(needs.gk-config.outputs.ticket_validator.branches, github.event.pull_request.base.ref) && contains(needs.gk-config.outputs.ticket_validator.projects, github.repository)
+        if: contains(fromJson(needs.gk-config.outputs.ticket_validator).branches, github.event.pull_request.base.ref) && contains(fromJson(needs.gk-config.outputs.ticket_validator).projects, github.repository)
         # if: contains(fromJson(steps.verify.outputs.CONFIG_JSON).branches, github.event.pull_request.base.ref) && contains(fromJson(steps.verify.outputs.CONFIG_JSON).projects, github.repository)
         run: exit 123
