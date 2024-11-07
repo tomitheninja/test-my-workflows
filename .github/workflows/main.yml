@@ -2,20 +2,27 @@ name: Parse PR body
 
 on:
   pull_request:
-  pull_request_comment:
+  issue_comment:
 
 env:
   gk-action: 'ticket_validator'
 
 jobs:
   gk-config:
-    uses: tomitheninja/test-my-workflows/.github/workflows/gk-config.yml
+    uses: tomitheninja/test-my-workflows/.github/workflows/gk-config.yml@main
 
   check_prisma_changes:
     needs: [gk-config]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verify PR label users
-        if: contains(needs.gk-config.outputs.ticket_validator.branches, github.event.pull_request.base.ref) && contains(needs.gk-config.outputs.ticket_validator.projects, github.repository)
+        if: contains(fromJson(needs.gk-config.outputs.ticket_validator).branches, github.event.pull_request.base.ref) && contains(fromJson(needs.gk-config.outputs.ticket_validator).projects, github.repository)
         # if: contains(fromJson(steps.verify.outputs.CONFIG_JSON).branches, github.event.pull_request.base.ref) && contains(fromJson(steps.verify.outputs.CONFIG_JSON).projects, github.repository)
-        run: exit 123
+        run: |
+          set -x
+          echo ${{ toJson(fromJson(needs.gk-config.outputs.ticket_validator).branches) }}
+          echo ${{ toJson(fromJson(needs.gk-config.outputs.ticket_validator).projects) }}
+          echo ${{ github.event.pull_request.base.ref }}
+          echo ${{ github.repository }}
+          exit 123
