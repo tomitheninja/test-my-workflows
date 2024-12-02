@@ -1,22 +1,15 @@
 name: Parse PR body
 
 on:
-  pull_request:
-  issue_comment:
+  schedule:
+    - cron: "*/5 * * * *"
 
 env:
-  gk-action: 'ticket_validator'
+  BOT_DRY_RUN: ${{ github.event_name == 'schedule' && 0 || 1 }}
 
 jobs:
-  gk-config:
-    uses: tomitheninja/test-my-workflows/.github/workflows/gk-config.yml@main
-
   check_prisma_changes:
-    needs: [gk-config]
-    if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Verify PR label users
-        if: contains(fromJson(needs.gk-config.outputs.ticket_validator).branches, github.event.pull_request.base.ref) && contains(fromJson(needs.gk-config.outputs.ticket_validator).projects, github.repository)
-        # if: contains(fromJson(steps.verify.outputs.CONFIG_JSON).branches, github.event.pull_request.base.ref) && contains(fromJson(steps.verify.outputs.CONFIG_JSON).projects, github.repository)
-        run: exit 123
+      - name: Foo Bar Baz
+        run: echo "${{ env.BOT_DRY_RUN }}"
